@@ -2,7 +2,23 @@
 require_once 'includes/auth_check.php';
 require_once 'includes/db.php';
 
-// Base SQL query
+// --- Fetch stats for Manager ---
+if ($_SESSION['role'] == 'manager') {
+    // 1. Pending quotes
+    $pending_quotes = $conn->query("SELECT COUNT(id) as count FROM quotes WHERE status = 'pending'")->fetch_assoc()['count'];
+
+    // 2. Revenue this month
+    $rev_this_month = $conn->query("SELECT SUM(total_amount) as total FROM invoices WHERE MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE())")->fetch_assoc()['total'];
+
+    // 3. Total customers
+    $total_customers = $conn->query("SELECT COUNT(id) as count FROM customers")->fetch_assoc()['count'];
+
+    // 4. Total products
+    $total_products = $conn->query("SELECT COUNT(id) as count FROM products")->fetch_assoc()['count'];
+}
+
+
+// --- Fetch quotes list ---
 $sql = "SELECT
             q.id as quote_id,
             c.name as customer_name,
@@ -15,21 +31,17 @@ $sql = "SELECT
         JOIN customers c ON s.customer_id = c.id
         JOIN users u ON q.user_id = u.id";
 
-// Modify query based on user role
 if ($_SESSION['role'] == 'employee') {
-    $sql .= " WHERE q.user_id = ?";
+    $sql .= " WHERE q.user_id = ? ORDER BY q.created_at DESC";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $_SESSION['user_id']);
 } else {
-    // Manager sees all quotes
     $sql .= " ORDER BY q.created_at DESC";
     $stmt = $conn->prepare($sql);
 }
 
 $stmt->execute();
-$result = $stmt->get_result();
-$quotes = $result->fetch_all(MYSQLI_ASSOC);
-
+$quotes = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 $conn->close();
 
@@ -42,36 +54,37 @@ include 'includes/header.php';
 </div>
 
 <?php if ($_SESSION['role'] == 'manager'): ?>
+<!-- Quick Stats Cards -->
 <div class="row mb-4">
     <div class="col-md-3">
-        <div class="card text-center">
+        <div class="card text-white bg-warning mb-3">
             <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-box-seam fs-2"></i></h5>
-                <a href="products.php" class="btn btn-secondary">إدارة المخزون</a>
+                <h5 class="card-title">مقايسات معلقة</h5>
+                <p class="card-text fs-4"><?php echo $pending_quotes; ?></p>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card text-center">
+        <div class="card text-white bg-success mb-3">
             <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-file-earmark-text fs-2"></i></h5>
-                <a href="invoices.php" class="btn btn-secondary">إدارة الفواتير</a>
+                <h5 class="card-title">إيرادات الشهر</h5>
+                <p class="card-text fs-4"><?php echo number_format($rev_this_month ?? 0, 2); ?> ج.م</p>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card text-center">
+        <div class="card text-white bg-info mb-3">
             <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-truck fs-2"></i></h5>
-                <a href="suppliers.php" class="btn btn-secondary">إدارة الموردين</a>
+                <h5 class="card-title">إجمالي العملاء</h5>
+                <p class="card-text fs-4"><?php echo $total_customers; ?></p>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card text-center">
+         <div class="card text-white bg-secondary mb-3">
             <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-graph-up fs-2"></i></h5>
-                <a href="reports.php" class="btn btn-secondary">عرض التقارير</a>
+                <h5 class="card-title">إجمالي المنتجات</h5>
+                <p class="card-text fs-4"><?php echo $total_products; ?></p>
             </div>
         </div>
     </div>
@@ -91,7 +104,7 @@ include 'includes/header.php';
                     <th>العميل</th>
                     <th>الموقع</th>
                     <?php if ($_SESSION['role'] == 'manager'): ?>
-                        <th>تم إنشاؤها بواسطة</th>
+                        <th>بواسطة</th>
                     <?php endif; ?>
                     <th>التاريخ</th>
                     <th>الحالة</th>
@@ -119,6 +132,11 @@ include 'includes/header.php';
                             <a href="quotation.php?id=<?php echo $quote['quote_id']; ?>" class="btn btn-info btn-sm">
                                 <i class="bi bi-eye"></i> عرض
                             </a>
+                             <?php if ($quote['status'] == 'pending'): ?>
+                                <a href="edit_quote.php?id=<?php echo $quote['quote_id']; ?>" class="btn btn-warning btn-sm">
+                                    <i class="bi bi-pencil"></i> تعديل
+                                </a>
+                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>

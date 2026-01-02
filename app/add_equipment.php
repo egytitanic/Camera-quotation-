@@ -2,14 +2,30 @@
 require_once 'includes/auth_check.php';
 require_once 'includes/db.php';
 
-// Session management for quote creation flow
-if (!isset($_SESSION['site_id'])) {
-    header("Location: new_quote_customer.php");
+// If a site_id is passed via URL, it means a site was selected. Store it in the session.
+if (isset($_GET['site_id'])) {
+    $_SESSION['site_id'] = $_GET['site_id'];
+    // Redirect to the same page without the GET parameter to prevent issues on refresh
+    header("Location: add_equipment.php");
     exit;
 }
 
+// Session management for quote creation flow - check if site_id is now in session
+if (!isset($_SESSION['site_id'])) {
+    // If no site is selected, user must start over from customer selection
+    header("Location: new_quote_customer.php");
+    exit;
+}
+$site_id = $_SESSION['site_id'];
+
 // Fetch all products for the selector
 $products = $conn->query("SELECT id, name, price FROM products ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+
+// Fetch site and customer names for display
+$stmt = $conn->prepare("SELECT s.name as site_name, c.name as customer_name FROM sites s JOIN customers c ON s.customer_id = c.id WHERE s.id = ?");
+$stmt->bind_param("i", $site_id);
+$stmt->execute();
+$site_info = $stmt->get_result()->fetch_assoc();
 
 include 'includes/header.php';
 ?>
@@ -19,7 +35,7 @@ include 'includes/header.php';
 
 <div class="card">
     <div class="card-header">
-        الخطوة 3: إضافة بنود المقايسة من المخزون
+        الخطوة 3: إضافة بنود المقايسة للموقع "<?php echo htmlspecialchars($site_info['site_name']); ?>" (العميل: <?php echo htmlspecialchars($site_info['customer_name']); ?>)
     </div>
     <div class="card-body">
         <form action="actions/add_equipment.php" method="POST">
@@ -43,6 +59,7 @@ include 'includes/header.php';
             </div>
 
             <button type="submit" class="btn btn-success">إنشاء المقايسة النهائية <i class="bi bi-check-lg"></i></button>
+            <a href="add_site.php?customer_id=<?php echo $_SESSION['customer_id']; ?>" class="btn btn-secondary">الرجوع لاختيار الموقع</a>
         </form>
     </div>
 </div>

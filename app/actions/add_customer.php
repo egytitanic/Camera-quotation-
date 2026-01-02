@@ -12,20 +12,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if ($stmt->execute()) {
         $customer_id = $conn->insert_id;
-        $_SESSION['customer_id'] = $customer_id;
-        // Redirect to the next step
-        header("Location: ../add_site.php");
+
+        // Redirect to the next step (site selection) with the new customer ID
+        header("Location: ../add_site.php?customer_id=" . $customer_id);
         exit();
     } else {
-        // Handle error - for simplicity, we'll just echo it
+        // Handle error
         echo "Error: " . $stmt->error;
     }
 
     $stmt->close();
     $conn->close();
 } else {
-    // If not a POST request, redirect to the form page
-    header("Location: ../index.php");
+    // If not a POST request, redirect to the start of the flow
+    header("Location: ../new_quote_customer.php");
     exit();
 }
 ?>

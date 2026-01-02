@@ -2,13 +2,10 @@
 require_once '../includes/auth_check.php';
 require_once '../includes/db.php';
 
-// Ensure the user has a customer_id from the previous step
-if (!isset($_SESSION['customer_id'])) {
-    header("Location: ../index.php");
-    exit();
-}
+// This file is kept for consistency but the logic is now primarily in add_site.php itself.
+// It handles a direct POST from a form that ONLY adds a site.
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_SESSION['customer_id'])) {
     $customer_id = $_SESSION['customer_id'];
     $name = $_POST['site_name'];
     $address = $_POST['site_address'];
@@ -20,19 +17,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if ($stmt->execute()) {
         $site_id = $conn->insert_id;
         $_SESSION['site_id'] = $site_id;
-        // Redirect to the next step
         header("Location: ../add_equipment.php");
         exit();
     } else {
-        // Handle error
-        echo "Error: " . $stmt->error;
+        header("Location: ../add_site.php?customer_id=$customer_id&error=1");
+        exit();
     }
-
-    $stmt->close();
-    $conn->close();
 } else {
-    // If not a POST request, redirect to the form page
-    header("Location: ../add_site.php");
+    // If not a POST request or customer_id is missing, redirect
+    header("Location: ../new_quote_customer.php");
     exit();
 }
 ?>

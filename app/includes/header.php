@@ -42,6 +42,8 @@ if (session_status() === PHP_SESSION_NONE) {
                                 <li><a class="dropdown-item" href="purchases.php">فواتير المشتريات</a></li>
                                  <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="reports.php">التقارير</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="users.php">إدارة المستخدمين</a></li>
                             </ul>
                         </li>
                     <?php endif; ?>
