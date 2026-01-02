@@ -1,8 +1,9 @@
 <?php
-session_start();
-// If the user is not coming from the first step, redirect them back
+require_once 'includes/auth_check.php';
+
+// Session management for quote creation flow
 if (!isset($_SESSION['customer_id'])) {
-    header("Location: index.php");
+    header("Location: new_quote_customer.php");
     exit();
 }
 include 'includes/header.php';

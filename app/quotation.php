@@ -1,20 +1,20 @@
 <?php
-session_start();
+require_once 'includes/auth_check.php';
 require_once 'includes/db.php';
 
-// If the user hasn't completed the process, redirect them
-if (!isset($_SESSION['quote_id'])) {
-    header("Location: index.php");
+// Check if a quote ID is provided
+if (!isset($_GET['id']) || empty($_GET['id'])) {
+    header("Location: dashboard.php");
     exit();
 }
 
-$quote_id = $_SESSION['quote_id'];
+$quote_id = $_GET['id'];
 
-// Fetch all data for the quotation
+// Base SQL query
 $sql = "SELECT
             c.name AS customer_name, c.phone, c.address AS customer_address,
             s.name AS site_name, s.address AS site_address, s.location,
-            q.created_at,
+            q.created_at, q.user_id,
             qi.description, qi.quantity, qi.price
         FROM quotes q
         JOIN sites s ON q.site_id = s.id
@@ -22,29 +22,41 @@ $sql = "SELECT
         JOIN quote_items qi ON qi.quote_id = q.id
         WHERE q.id = ?";
 
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $quote_id);
+// For employees, add a condition to ensure they can only see their own quotes
+if ($_SESSION['role'] == 'employee') {
+    $sql .= " AND q.user_id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ii", $quote_id, $_SESSION['user_id']);
+} else {
+    // Managers can see any quote
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $quote_id);
+}
+
 $stmt->execute();
 $result = $stmt->get_result();
 
+// Check if a quote was found and if the user has permission
+if ($result->num_rows === 0) {
+    // Redirect to dashboard if no quote found or no permission
+    header("Location: dashboard.php");
+    exit();
+}
+
 $items = [];
 $customer_data = null;
-$site_data = null;
-$quote_date = null;
 
 while ($row = $result->fetch_assoc()) {
     if (!$customer_data) {
         $customer_data = [
             'name' => $row['customer_name'],
             'phone' => $row['phone'],
-            'address' => $row['customer_address']
+            'address' => $row['customer_address'],
+            'site_name' => $row['site_name'],
+            'site_address' => $row['site_address'],
+            'location' => $row['location'],
+            'created_at' => $row['created_at']
         ];
-        $site_data = [
-            'name' => $row['site_name'],
-            'address' => $row['site_address'],
-            'location' => $row['location']
-        ];
-        $quote_date = $row['created_at'];
     }
     $items[] = [
         'description' => $row['description'],
@@ -57,15 +69,15 @@ while ($row = $result->fetch_assoc()) {
 $stmt->close();
 $conn->close();
 
-// Clear the session data to start a new quote
-session_destroy();
+// We are no longer destroying the session here to allow continuous navigation
 
 include 'includes/header.php';
 ?>
 
 <div class="card" id="quotation-card">
-    <div class="card-header bg-primary text-white">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
         <h2>مقايسة كاميرات مراقبة</h2>
+        <a href="dashboard.php" class="btn btn-light">العودة للوحة التحكم</a>
     </div>
     <div class="card-body">
         <div class="row mb-4">
@@ -77,12 +89,12 @@ include 'includes/header.php';
             </div>
             <div class="col-md-6 text-md-end">
                 <h4>بيانات الموقع</h4>
-                <p><strong>اسم الموقع:</strong> <?php echo htmlspecialchars($site_data['name']); ?></p>
-                <p><strong>العنوان:</strong> <?php echo htmlspecialchars($site_data['address']); ?></p>
-                <?php if (!empty($site_data['location'])): ?>
-                    <p><strong>رابط الموقع:</strong> <a href="<?php echo htmlspecialchars($site_data['location']); ?>" target="_blank">عرض على الخريطة</a></p>
+                <p><strong>اسم الموقع:</strong> <?php echo htmlspecialchars($customer_data['site_name']); ?></p>
+                <p><strong>العنوان:</strong> <?php echo htmlspecialchars($customer_data['site_address']); ?></p>
+                <?php if (!empty($customer_data['location'])): ?>
+                    <p><strong>رابط الموقع:</strong> <a href="<?php echo htmlspecialchars($customer_data['location']); ?>" target="_blank">عرض على الخريطة</a></p>
                 <?php endif; ?>
-                <p><strong>تاريخ المقايسة:</strong> <?php echo date('Y-m-d', strtotime($quote_date)); ?></p>
+                <p><strong>تاريخ المقايسة:</strong> <?php echo date('Y-m-d', strtotime($customer_data['created_at'])); ?></p>
             </div>
         </div>
 
@@ -122,13 +134,16 @@ include 'includes/header.php';
     </div>
 </div>
 
-<div class="text-center mt-4">
+<div class="text-center mt-4 print-buttons">
     <button onclick="window.print()" class="btn btn-info"><i class="bi bi-printer"></i> طباعة المقايسة</button>
-    <a href="index.php" class="btn btn-secondary"><i class="bi bi-plus-circle"></i> إنشاء مقايسة جديدة</a>
+    <a href="dashboard.php" class="btn btn-secondary"> العودة للوحة التحكم</a>
 </div>
 
 <style>
 @media print {
+    .print-buttons, .card-header a {
+        display: none;
+    }
     body * {
         visibility: hidden;
     }
@@ -140,9 +155,6 @@ include 'includes/header.php';
         left: 0;
         top: 0;
         width: 100%;
-    }
-    .btn {
-        display: none;
     }
 }
 </style>

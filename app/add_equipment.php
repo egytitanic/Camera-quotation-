@@ -1,8 +1,9 @@
 <?php
-session_start();
-// If the user is not coming from the previous step, redirect them
+require_once 'includes/auth_check.php';
+
+// Session management for quote creation flow
 if (!isset($_SESSION['site_id'])) {
-    header("Location: add_site.php");
+    header("Location: new_quote_customer.php"); // Redirect to the start of the flow
     exit();
 }
 include 'includes/header.php';
