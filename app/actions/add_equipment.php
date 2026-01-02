@@ -17,23 +17,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $conn->begin_transaction();
 
     try {
-        // 1. Create a new quote and link it to the user, including installation expenses
+        // 1. Create a new quote record
         $stmt_quote = $conn->prepare("INSERT INTO quotes (site_id, user_id, installation_expenses) VALUES (?, ?, ?)");
         $stmt_quote->bind_param("iid", $site_id, $user_id, $installation_expenses);
         $stmt_quote->execute();
         $quote_id = $conn->insert_id;
         $stmt_quote->close();
 
-        // 2. Add items to the quote
+        // 2. Add items to the quote from the new inventory-based form
+        $product_ids = $_POST['product_id'];
         $descriptions = $_POST['product_description'];
         $quantities = $_POST['quantity'];
         $prices = $_POST['price'];
 
-        $stmt_item = $conn->prepare("INSERT INTO quote_items (quote_id, description, quantity, price) VALUES (?, ?, ?, ?)");
+        $stmt_item = $conn->prepare("INSERT INTO quote_items (quote_id, product_id, description, quantity, price) VALUES (?, ?, ?, ?, ?)");
 
-        for ($i = 0; $i < count($descriptions); $i++) {
-            if (!empty($descriptions[$i]) && !empty($quantities[$i]) && !empty($prices[$i])) {
-                $stmt_item->bind_param("isid", $quote_id, $descriptions[$i], $quantities[$i], $prices[$i]);
+        for ($i = 0; $i < count($product_ids); $i++) {
+            if (!empty($product_ids[$i]) && !empty($quantities[$i])) {
+                $stmt_item->bind_param("iisid", $quote_id, $product_ids[$i], $descriptions[$i], $quantities[$i], $prices[$i]);
                 $stmt_item->execute();
             }
         }
@@ -42,21 +43,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Commit the transaction
         $conn->commit();
 
-        // Store quote_id in session and redirect to the quotation page
-        $_SESSION['quote_id'] = $quote_id;
-        header("Location: ../quotation.php");
+        // Store quote_id in a temporary session var for the redirect
+        $_SESSION['temp_quote_id'] = $quote_id;
+
+        // Clean up the quote creation session variables
+        unset($_SESSION['customer_id']);
+        unset($_SESSION['site_id']);
+
+        header("Location: ../quotation.php?id=" . $quote_id);
         exit();
 
     } catch (mysqli_sql_exception $exception) {
-        // Rollback the transaction if something failed
         $conn->rollback();
-        // Handle error
-        echo "Error: " . $exception->getMessage();
+        // Handle error - ideally log this
+        die("Error creating quote: " . $exception->getMessage());
     }
 
     $conn->close();
 } else {
-    // If not a POST request, redirect
     header("Location: ../add_equipment.php");
     exit();
 }
