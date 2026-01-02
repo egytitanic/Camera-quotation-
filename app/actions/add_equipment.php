@@ -11,14 +11,15 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['site_id'])) {
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $site_id = $_SESSION['site_id'];
     $user_id = $_SESSION['user_id'];
+    $installation_expenses = $_POST['installation_expenses'] ?? 0.00;
 
     // Begin Transaction
     $conn->begin_transaction();
 
     try {
-        // 1. Create a new quote and link it to the user
-        $stmt_quote = $conn->prepare("INSERT INTO quotes (site_id, user_id) VALUES (?, ?)");
-        $stmt_quote->bind_param("ii", $site_id, $user_id);
+        // 1. Create a new quote and link it to the user, including installation expenses
+        $stmt_quote = $conn->prepare("INSERT INTO quotes (site_id, user_id, installation_expenses) VALUES (?, ?, ?)");
+        $stmt_quote->bind_param("iid", $site_id, $user_id, $installation_expenses);
         $stmt_quote->execute();
         $quote_id = $conn->insert_id;
         $stmt_quote->close();

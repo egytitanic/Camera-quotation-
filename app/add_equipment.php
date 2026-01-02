@@ -37,6 +37,12 @@ include 'includes/header.php';
             </div>
             <button type="button" id="add_item" class="btn btn-secondary mb-3"><i class="bi bi-plus"></i> إضافة بند آخر</button>
             <hr>
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label for="installation_expenses" class="form-label">مصروفات التركيب والأدوات الإضافية</label>
+                    <input type="number" step="0.01" name="installation_expenses" class="form-control" value="0.00" required>
+                </div>
+            </div>
             <button type="submit" class="btn btn-success">إنشاء المقايسة النهائية <i class="bi bi-check-lg"></i></button>
         </form>
     </div>

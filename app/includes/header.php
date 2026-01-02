@@ -35,6 +35,11 @@ if (session_status() === PHP_SESSION_NONE) {
                     <li class="nav-item">
                         <a class="nav-link" href="dashboard.php">لوحة التحكم</a>
                     </li>
+                    <?php if ($_SESSION['role'] == 'manager'): ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="reports.php">التقارير</a>
+                    </li>
+                    <?php endif; ?>
                     <li class="nav-item">
                         <a class="nav-link" href="logout.php">تسجيل الخروج</a>
                     </li>

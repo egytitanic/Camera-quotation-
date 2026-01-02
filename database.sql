@@ -46,6 +46,7 @@ CREATE TABLE `quotes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `site_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
+  `installation_expenses` decimal(10,2) NOT NULL DEFAULT '0.00',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `site_id` (`site_id`),

@@ -14,7 +14,7 @@ $quote_id = $_GET['id'];
 $sql = "SELECT
             c.name AS customer_name, c.phone, c.address AS customer_address,
             s.name AS site_name, s.address AS site_address, s.location,
-            q.created_at, q.user_id,
+            q.created_at, q.user_id, q.installation_expenses,
             qi.description, qi.quantity, qi.price
         FROM quotes q
         JOIN sites s ON q.site_id = s.id
@@ -38,13 +38,13 @@ $result = $stmt->get_result();
 
 // Check if a quote was found and if the user has permission
 if ($result->num_rows === 0) {
-    // Redirect to dashboard if no quote found or no permission
     header("Location: dashboard.php");
     exit();
 }
 
 $items = [];
 $customer_data = null;
+$installation_expenses = 0;
 
 while ($row = $result->fetch_assoc()) {
     if (!$customer_data) {
@@ -57,6 +57,7 @@ while ($row = $result->fetch_assoc()) {
             'location' => $row['location'],
             'created_at' => $row['created_at']
         ];
+        $installation_expenses = $row['installation_expenses'];
     }
     $items[] = [
         'description' => $row['description'],
@@ -69,8 +70,6 @@ while ($row = $result->fetch_assoc()) {
 $stmt->close();
 $conn->close();
 
-// We are no longer destroying the session here to allow continuous navigation
-
 include 'includes/header.php';
 ?>
 
@@ -80,6 +79,7 @@ include 'includes/header.php';
         <a href="dashboard.php" class="btn btn-light">العودة للوحة التحكم</a>
     </div>
     <div class="card-body">
+        <!-- Customer and Site Details -->
         <div class="row mb-4">
             <div class="col-md-6">
                 <h4>بيانات العميل</h4>
@@ -91,9 +91,6 @@ include 'includes/header.php';
                 <h4>بيانات الموقع</h4>
                 <p><strong>اسم الموقع:</strong> <?php echo htmlspecialchars($customer_data['site_name']); ?></p>
                 <p><strong>العنوان:</strong> <?php echo htmlspecialchars($customer_data['site_address']); ?></p>
-                <?php if (!empty($customer_data['location'])): ?>
-                    <p><strong>رابط الموقع:</strong> <a href="<?php echo htmlspecialchars($customer_data['location']); ?>" target="_blank">عرض على الخريطة</a></p>
-                <?php endif; ?>
                 <p><strong>تاريخ المقايسة:</strong> <?php echo date('Y-m-d', strtotime($customer_data['created_at'])); ?></p>
             </div>
         </div>
@@ -111,9 +108,9 @@ include 'includes/header.php';
             </thead>
             <tbody>
                 <?php
-                $grand_total = 0;
+                $items_total = 0;
                 foreach ($items as $index => $item):
-                    $grand_total += $item['total'];
+                    $items_total += $item['total'];
                 ?>
                 <tr>
                     <th scope="row"><?php echo $index + 1; ?></th>
@@ -125,9 +122,17 @@ include 'includes/header.php';
                 <?php endforeach; ?>
             </tbody>
             <tfoot>
+                <tr>
+                    <td colspan="4" class="text-end"><strong>إجمالي البنود</strong></td>
+                    <td><strong><?php echo number_format($items_total, 2); ?> ج.م</strong></td>
+                </tr>
+                <tr>
+                    <td colspan="4" class="text-end"><strong>مصروفات التركيب والأدوات الإضافية</strong></td>
+                    <td><strong><?php echo number_format($installation_expenses, 2); ?> ج.م</strong></td>
+                </tr>
                 <tr class="table-primary">
                     <td colspan="4" class="text-end"><strong>الإجمالي الكلي</strong></td>
-                    <td><strong><?php echo number_format($grand_total, 2); ?> ج.م</strong></td>
+                    <td><strong><?php echo number_format($items_total + $installation_expenses, 2); ?> ج.م</strong></td>
                 </tr>
             </tfoot>
         </table>
@@ -141,21 +146,10 @@ include 'includes/header.php';
 
 <style>
 @media print {
-    .print-buttons, .card-header a {
-        display: none;
-    }
-    body * {
-        visibility: hidden;
-    }
-    #quotation-card, #quotation-card * {
-        visibility: visible;
-    }
-    #quotation-card {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-    }
+    .print-buttons, .card-header a { display: none; }
+    body * { visibility: hidden; }
+    #quotation-card, #quotation-card * { visibility: visible; }
+    #quotation-card { position: absolute; left: 0; top: 0; width: 100%; }
 }
 </style>
 
