@@ -54,7 +54,38 @@ $quotes = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     <!-- ... (card header) ... -->
     <div class="card-body">
         <table class="table table-striped table-hover">
-            <!-- ... (table head and body are the same) ... -->
+            <thead>
+                <tr>
+                    <th>رقم المقايسة</th>
+                    <th>العميل</th>
+                    <th>الموقع</th>
+                    <th>الحالة</th>
+                    <th>أنشئ بواسطة</th>
+                    <th>التاريخ</th>
+                    <th class="text-end">الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($quotes as $quote): ?>
+                    <tr>
+                        <td>#<?php echo $quote['quote_id']; ?></td>
+                        <td><?php echo htmlspecialchars($quote['customer_name']); ?></td>
+                        <td><?php echo htmlspecialchars($quote['site_name']); ?></td>
+                        <td>
+                            <span class="badge bg-<?php echo $quote['status'] == 'pending' ? 'warning' : 'success'; ?>">
+                                <?php echo htmlspecialchars($quote['status']); ?>
+                            </span>
+                        </td>
+                        <td><?php echo htmlspecialchars($quote['created_by']); ?></td>
+                        <td><?php echo date('Y-m-d', strtotime($quote['created_at'])); ?></td>
+                        <td class="text-end">
+                            <a href="quotation.php?id=<?php echo $quote['quote_id']; ?>" class="btn btn-primary btn-sm">
+                                <i class="bi bi-eye"></i> عرض
+                            </a>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
         </table>
     </div>
     <div class="card-footer">

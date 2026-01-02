@@ -34,7 +34,30 @@ include 'includes/header.php';
 <div class="card">
     <div class="card-body">
         <table class="table table-striped">
-            <!-- ... (table head and body are the same) ... -->
+            <thead>
+                <tr>
+                    <th>رقم الفاتورة</th>
+                    <th>العميل</th>
+                    <th>المبلغ الإجمالي</th>
+                    <th>تاريخ الإنشاء</th>
+                    <th class="text-end">الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($invoices as $invoice): ?>
+                    <tr>
+                        <td>#<?php echo $invoice['id']; ?></td>
+                        <td><?php echo htmlspecialchars($invoice['customer_name']); ?></td>
+                        <td><?php echo number_format($invoice['total_amount'], 2); ?> ج.م</td>
+                        <td><?php echo date('Y-m-d', strtotime($invoice['created_at'])); ?></td>
+                        <td class="text-end">
+                            <a href="view_invoice.php?id=<?php echo $invoice['id']; ?>" class="btn btn-primary btn-sm">
+                                <i class="bi bi-eye"></i> عرض
+                            </a>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
         </table>
     </div>
     <div class="card-footer">

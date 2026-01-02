@@ -10,7 +10,46 @@ if ($_SESSION['role'] !== 'manager') {
 
 define('UPLOAD_DIR', 'uploads/products/');
 
-// ... (POST handling logic is the same)
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['save_product'])) {
+        // Add/Update Product
+        $id = $_POST['id'];
+        $name = $_POST['name'];
+        $description = $_POST['description'];
+        $category_id = $_POST['category_id'] ?: null;
+        $price = $_POST['price'];
+        $image_name = $_POST['current_image'] ?? '';
+
+        if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
+            $tmp_name = $_FILES['image']['tmp_name'];
+            $image_name = uniqid() . '-' . basename($_FILES['image']['name']);
+            move_uploaded_file($tmp_name, UPLOAD_DIR . $image_name);
+        }
+
+        if (empty($id)) {
+            // Add new product
+            $stmt = $conn->prepare("INSERT INTO products (name, description, category_id, price, image) VALUES (?, ?, ?, ?, ?)");
+            $stmt->bind_param("ssids", $name, $description, $category_id, $price, $image_name);
+        } else {
+            // Update existing product
+            $stmt = $conn->prepare("UPDATE products SET name = ?, description = ?, category_id = ?, price = ?, image = ? WHERE id = ?");
+            $stmt->bind_param("ssidsi", $name, $description, $category_id, $price, $image_name, $id);
+        }
+        $stmt->execute();
+        $stmt->close();
+
+    } elseif (isset($_POST['delete_product'])) {
+        // Delete Product
+        $id = $_POST['id'];
+        $stmt = $conn->prepare("DELETE FROM products WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $stmt->close();
+    }
+    header("Location: products.php");
+    exit;
+}
+
 
 // Pagination
 $records_per_page = 10;
@@ -67,5 +106,80 @@ include 'includes/header.php';
         <?php echo generate_pagination($total_products, $current_page, $records_per_page, 'products.php?'); ?>
     </div>
 </div>
-<!-- Modal and script... -->
+<!-- Product Modal -->
+<div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="productModalLabel">إضافة منتج جديد</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="productForm" method="POST" action="products.php" enctype="multipart/form-data">
+                    <input type="hidden" name="id" id="productId">
+                    <div class="mb-3">
+                        <label for="productName" class="form-label">اسم المنتج</label>
+                        <input type="text" class="form-control" id="productName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="productDescription" class="form-label">الوصف</label>
+                        <textarea class="form-control" id="productDescription" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="productCategory" class="form-label">القسم</label>
+                        <select class="form-select" id="productCategory" name="category_id">
+                            <option value="">اختر قسماً</option>
+                            <?php foreach ($categories as $category): ?>
+                                <option value="<?php echo $category['id']; ?>"><?php echo htmlspecialchars($category['name']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="productPrice" class="form-label">السعر</label>
+                        <input type="number" step="0.01" class="form-control" id="productPrice" name="price" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="productImage" class="form-label">صورة المنتج</label>
+                        <input class="form-control" type="file" id="productImage" name="image">
+                    </div>
+                    <div class="modal-footer">
+                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+                         <button type="submit" name="save_product" class="btn btn-primary">حفظ</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var productModal = document.getElementById('productModal');
+    productModal.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        var form = document.getElementById('productForm');
+        var modalTitle = productModal.querySelector('.modal-title');
+        var productId = document.getElementById('productId');
+
+        var productData = button.getAttribute('data-product');
+
+        if (productData) {
+            // Edit mode
+            productData = JSON.parse(productData);
+            modalTitle.textContent = 'تعديل المنتج';
+            productId.value = productData.id;
+            document.getElementById('productName').value = productData.name;
+            document.getElementById('productDescription').value = productData.description;
+            document.getElementById('productCategory').value = productData.category_id;
+            document.getElementById('productPrice').value = productData.price;
+        } else {
+            // Add mode
+            modalTitle.textContent = 'إضافة منتج جديد';
+            form.reset();
+            productId.value = '';
+        }
+    });
+});
+</script>
+
 <?php include 'includes/footer.php'; ?>

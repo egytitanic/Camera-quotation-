@@ -39,8 +39,11 @@ if (session_status() === PHP_SESSION_NONE) {
                             <?php if ($_SESSION['role'] == 'manager'): ?>
                                 <li><hr class="dropdown-divider"></li>
                                 <li class="dropdown-header">الإدارة</li>
-                                <li><a class="dropdown-item" href="products.php">المخزون</a></li>
+                                <li><a class="dropdown-item" href="dashboard.php">المقايسات</a></li>
                                 <li><a class="dropdown-item" href="invoices.php">الفواتير</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="products.php">المنتجات</a></li>
+                                <li><a class="dropdown-item" href="categories.php">التصنيفات</a></li>
                                 <li><a class="dropdown-item" href="purchases.php">المشتريات</a></li>
                                 <li><a class="dropdown-item" href="suppliers.php">الموردين</a></li>
                                 <li><a class="dropdown-item" href="users.php">المستخدمين</a></li>
