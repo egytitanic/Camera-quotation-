@@ -38,6 +38,7 @@ CREATE TABLE `products` (
   `description` text,
   `price` decimal(10,2) NOT NULL DEFAULT '0.00',
   `category_id` int(11) DEFAULT NULL,
+  `image` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `category_id` (`category_id`),
   CONSTRAINT `products_ibfk_1` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL
