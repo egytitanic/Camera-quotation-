@@ -41,21 +41,27 @@ if ($result_quote->num_rows === 0) {
 $quote_data = $result_quote->fetch_assoc();
 $stmt_quote->close();
 
-// 2. Fetch the quote items
-$sql_items = "SELECT p.name, qi.description, qi.quantity, qi.price
-              FROM quote_items qi
-              LEFT JOIN products p ON qi.product_id = p.id
-              WHERE qi.quote_id = ?";
-$stmt_items = $conn->prepare($sql_items);
-$stmt_items->bind_param("i", $quote_id);
-$stmt_items->execute();
-$items = $stmt_items->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt_items->close();
+// Initialize variables to ensure they exist
+$items = [];
+$installation_expenses = 0;
+
+if ($quote_data) {
+    // For convenience
+    $installation_expenses = $quote_data['installation_expenses'];
+
+    // 2. Fetch the quote items only if quote data exists
+    $sql_items = "SELECT p.name, qi.description, qi.quantity, qi.price
+                  FROM quote_items qi
+                  LEFT JOIN products p ON qi.product_id = p.id
+                  WHERE qi.quote_id = ?";
+    $stmt_items = $conn->prepare($sql_items);
+    $stmt_items->bind_param("i", $quote_id);
+    $stmt_items->execute();
+    $items = $stmt_items->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt_items->close();
+}
 
 $conn->close();
-
-// For convenience
-$installation_expenses = $quote_data['installation_expenses'];
 
 include 'includes/header.php';
 ?>

@@ -24,31 +24,43 @@ $sql = "SELECT
         JOIN customers c ON s.customer_id = c.id
         JOIN users u ON q.user_id = u.id";
 
+// --- Build queries based on role ---
+$params = [];
+$param_types = "";
+$where_clause = "";
+
 if ($_SESSION['role'] == 'employee') {
     $where_clause = " WHERE q.user_id = ?";
-    $count_sql .= $where_clause;
-    $sql .= $where_clause;
-
-    $stmt_count = $conn->prepare($count_sql);
-    $stmt_count->bind_param("i", $_SESSION['user_id']);
-    $stmt_count->execute();
-    $total_quotes = $stmt_count->get_result()->fetch_assoc()['total'];
-
-    $sql .= " ORDER BY q.created_at DESC LIMIT ? OFFSET ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("iii", $_SESSION['user_id'], $records_per_page, $offset);
-} else { // Manager role
-    $stmt_count = $conn->prepare($count_sql);
-    $stmt_count->execute();
-    $total_quotes = $stmt_count->get_result()->fetch_assoc()['total'];
-
-    $sql .= " ORDER BY q.created_at DESC LIMIT ? OFFSET ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ii", $records_per_page, $offset);
+    $params[] = $_SESSION['user_id'];
+    $param_types .= "i";
 }
 
+$count_sql .= $where_clause;
+$sql .= $where_clause;
+
+// --- Get total count for pagination ---
+$stmt_count = $conn->prepare($count_sql);
+if (!empty($params)) {
+    $stmt_count->bind_param($param_types, ...$params);
+}
+$stmt_count->execute();
+$total_quotes_result = $stmt_count->get_result()->fetch_assoc();
+$total_quotes = $total_quotes_result ? $total_quotes_result['total'] : 0;
+$stmt_count->close();
+
+// --- Get paginated results ---
+$sql .= " ORDER BY q.created_at DESC LIMIT ? OFFSET ?";
+$params[] = $records_per_page;
+$params[] = $offset;
+$param_types .= "ii";
+
+$stmt = $conn->prepare($sql);
+$stmt->bind_param($param_types, ...$params);
+
 $stmt->execute();
-$quotes = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$result = $stmt->get_result();
+$quotes = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+$stmt->close();
 // ... (closing db connection, include header) ...
 ?>
 <!-- ... (HTML for title and stats cards) ... -->
