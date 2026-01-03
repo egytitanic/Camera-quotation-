@@ -9,63 +9,53 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 
 $quote_id = $_GET['id'];
 
-$sql = "SELECT
-            c.name AS customer_name, c.phone, c.address AS customer_address, c.id as customer_id,
-            s.name AS site_name, s.address AS site_address, s.location,
-            q.created_at, q.user_id, q.installation_expenses, q.status,
-            qi.product_id, qi.description, qi.quantity, qi.price
+// 1. Fetch the main quote data
+$sql_quote = "SELECT
+            q.id as quote_id, q.status, q.installation_expenses, q.created_at,
+            c.name AS customer_name, c.phone, c.address AS customer_address,
+            s.name AS site_name, s.address AS site_address,
+            u.username as created_by
         FROM quotes q
         JOIN sites s ON q.site_id = s.id
         JOIN customers c ON s.customer_id = c.id
-        JOIN quote_items qi ON qi.quote_id = q.id
+        JOIN users u ON q.user_id = u.id
         WHERE q.id = ?";
 
 if ($_SESSION['role'] == 'employee') {
-    $sql .= " AND q.user_id = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ii", $quote_id, $_SESSION['user_id']);
+    $sql_quote .= " AND q.user_id = ?";
+    $stmt_quote = $conn->prepare($sql_quote);
+    $stmt_quote->bind_param("ii", $quote_id, $_SESSION['user_id']);
 } else {
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $quote_id);
+    $stmt_quote = $conn->prepare($sql_quote);
+    $stmt_quote->bind_param("i", $quote_id);
 }
 
-$stmt->execute();
-$result = $stmt->get_result();
+$stmt_quote->execute();
+$result_quote = $stmt_quote->get_result();
 
-if ($result->num_rows === 0) {
+if ($result_quote->num_rows === 0) {
+    // No quote found, or user does not have permission
     header("Location: dashboard.php");
     exit();
 }
+$quote_data = $result_quote->fetch_assoc();
+$stmt_quote->close();
 
-$items = [];
-$quote_data = null;
-$installation_expenses = 0;
+// 2. Fetch the quote items
+$sql_items = "SELECT p.name, qi.description, qi.quantity, qi.price
+              FROM quote_items qi
+              LEFT JOIN products p ON qi.product_id = p.id
+              WHERE qi.quote_id = ?";
+$stmt_items = $conn->prepare($sql_items);
+$stmt_items->bind_param("i", $quote_id);
+$stmt_items->execute();
+$items = $stmt_items->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt_items->close();
 
-while ($row = $result->fetch_assoc()) {
-    if (!$quote_data) {
-        $quote_data = [
-            'customer_id' => $row['customer_id'],
-            'customer_name' => $row['customer_name'],
-            'customer_phone' => $row['phone'],
-            'customer_address' => $row['customer_address'],
-            'site_name' => $row['site_name'],
-            'site_address' => $row['site_address'],
-            'location' => $row['location'],
-            'created_at' => $row['created_at'],
-            'status' => $row['status']
-        ];
-        $installation_expenses = $row['installation_expenses'];
-    }
-    $items[] = [
-        'product_id' => $row['product_id'],
-        'description' => $row['description'],
-        'quantity' => $row['quantity'],
-        'price' => $row['price'],
-        'total' => $row['quantity'] * $row['price']
-    ];
-}
-$stmt->close();
 $conn->close();
+
+// For convenience
+$installation_expenses = $quote_data['installation_expenses'];
 
 include 'includes/header.php';
 ?>
@@ -106,14 +96,15 @@ include 'includes/header.php';
                 <?php
                 $items_total = 0;
                 foreach ($items as $index => $item):
-                    $items_total += $item['total'];
+                    $item_total = $item['quantity'] * $item['price'];
+                    $items_total += $item_total;
                 ?>
                 <tr>
                     <th scope="row"><?php echo $index + 1; ?></th>
                     <td><?php echo htmlspecialchars($item['description']); ?></td>
                     <td><?php echo $item['quantity']; ?></td>
                     <td><?php echo number_format($item['price'], 2); ?> ج.م</td>
-                    <td><?php echo number_format($item['total'], 2); ?> ج.م</td>
+                    <td><?php echo number_format($item_total, 2); ?> ج.م</td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>

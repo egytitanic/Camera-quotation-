@@ -31,18 +31,20 @@ if ($_SESSION['role'] == 'employee') {
 
     $stmt_count = $conn->prepare($count_sql);
     $stmt_count->bind_param("i", $_SESSION['user_id']);
+    $stmt_count->execute();
+    $total_quotes = $stmt_count->get_result()->fetch_assoc()['total'];
+
+    $sql .= " ORDER BY q.created_at DESC LIMIT ? OFFSET ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("iii", $_SESSION['user_id'], $records_per_page, $offset);
 } else {
     $stmt_count = $conn->prepare($count_sql);
-}
-$stmt_count->execute();
-$total_quotes = $stmt_count->get_result()->fetch_assoc()['total'];
+    $stmt_count->execute();
+    $total_quotes = $stmt_count->get_result()->fetch_assoc()['total'];
 
-$sql .= " ORDER BY q.created_at DESC LIMIT $records_per_page OFFSET $offset";
-if ($_SESSION['role'] == 'employee') {
+    $sql .= " ORDER BY q.created_at DESC LIMIT ? OFFSET ?";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $_SESSION['user_id']);
-} else {
-    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ii", $records_per_page, $offset);
 }
 
 $stmt->execute();
