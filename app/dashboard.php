@@ -37,7 +37,7 @@ if ($_SESSION['role'] == 'employee') {
     $sql .= " ORDER BY q.created_at DESC LIMIT ? OFFSET ?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("iii", $_SESSION['user_id'], $records_per_page, $offset);
-} else {
+} else { // Manager role
     $stmt_count = $conn->prepare($count_sql);
     $stmt_count->execute();
     $total_quotes = $stmt_count->get_result()->fetch_assoc()['total'];
